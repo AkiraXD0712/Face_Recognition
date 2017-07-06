@@ -5,8 +5,13 @@ We need to download python3.5 for using tensorflow on Windows, and we also need 
 ### For Windows
 All packages used can be download on http://www.lfd.uci.edu/~gohlke/pythonlibs/  
 Use `python -m pip install <packages.xml>` to install, run as root  
-### Linux
+### For Linux
 `sudo pip3 install numpy opencv-python scipy scikit-learn h5py`
 #### Install Tensorflow and Keras
 For Tensorflow, see https://www.tensorflow.org/install/install_linux    
-`sudo pip3 install keras`  
+For Keras, use `sudo pip3 install keras`  
+### For Raspbian
+`sudo pip3 install numpy opencv-python scipy scikit-learn h5py`
+#### Install Tensorflow and Keras
+For Tensorflow, see https://github.com/samjabrahams/tensorflow-on-raspberry-pi  
+For Keras, use `sudo pip3 install keras`  
