@@ -1,67 +1,70 @@
 # -*- coding: utf-8 -*-
 import random
 import argparse
-import numpy as np
 from sklearn.cross_validation import train_test_split
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import SGD
-from keras.utils import np_utils
 from keras.models import load_model
-
 from QR_input import extract_data, resize_with_pad, IMAGE_SIZE
 
-FILE_PATH = 'C:\\Users\Akira.DESKTOP-HM7OVCC\.keras\QR_code\model.h5'
+MODEL_DIR = ''
 
 
 class Dataset(object):
 
     def __init__(self):
-        self.X_train = None
-        self.X_valid = None
-        self.X_test = None
-        self.Y_train = None
-        self.Y_valid = None
-        self.Y_test = None
+        self.x_train = None
+        self.x_valid = None
+        self.x_test = None
+        self.y_train = None
+        self.y_valid = None
+        self.y_test = None
 
-    def read(self, input_dir, nb_classes, img_rows=IMAGE_SIZE, img_cols=IMAGE_SIZE, img_channels=3):
-        images, labels = extract_data(input_dir)
-        labels = np.reshape(labels, [-1])
-        # numpy.reshape
-        X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.3, random_state=random.randint(0, 100))
-        X_valid, X_test, y_valid, y_test = train_test_split(images, labels, test_size=0.5, random_state=random.randint(0, 100))
+    def read(self, input_dir):
+        images, labels, nb_classes = extract_data(input_dir)
 
-        X_train = X_train.reshape(X_train.shape[0], img_rows, img_cols, img_channels)
-        X_valid = X_valid.reshape(X_valid.shape[0], img_rows, img_cols, img_channels)
-        X_test = X_test.reshape(X_test.shape[0], img_rows, img_cols, img_channels)
-        input_shape = (img_rows, img_cols, img_channels)
+        # shuffle and split data between train and test sets
+        x_train, x_test, y_train, y_test = train_test_split(
+            images,
+            labels,
+            test_size=0.3,
+            random_state=random.randint(0, 100)
+        )
+        x_valid, x_test, y_valid, y_test = train_test_split(
+            images,
+            labels,
+            test_size=0.5,
+            random_state=random.randint(0, 100)
+        )
 
-        # the data, shuffled and split between train and test sets
-        print('X_train shape:', X_train.shape)
-        print(X_train.shape[0], 'train samples')
-        print(X_valid.shape[0], 'valid samples')
-        print(X_test.shape[0], 'test samples')
+        print('x_train shape:', x_train.shape)
+        print(x_train.shape[0], 'train samples')
+        print(x_valid.shape[0], 'valid samples')
+        print(x_test.shape[0], 'test samples')
 
-        # convert class vectors to binary class matrices
-        Y_train = np_utils.to_categorical(y_train, nb_classes)
-        Y_valid = np_utils.to_categorical(y_valid, nb_classes)
-        Y_test = np_utils.to_categorical(y_test, nb_classes)
+        # # convert class vectors to binary class matrices
+        # y_train = np_utils.to_categorical(y_train, nb_classes)
+        # y_valid = np_utils.to_categorical(y_valid, nb_classes)
+        # y_test = np_utils.to_categorical(y_test, nb_classes)
 
-        X_train = X_train.astype('float32')
-        X_valid = X_valid.astype('float32')
-        X_test = X_test.astype('float32')
-        X_train /= 255
-        X_valid /= 255
-        X_test /= 255
+        x_train = x_train.astype('float32')
+        x_valid = x_valid.astype('float32')
+        x_test = x_test.astype('float32')
+        x_train /= 255
+        x_valid /= 255
+        x_test /= 255
 
-        self.X_train = X_train
-        self.X_valid = X_valid
-        self.X_test = X_test
-        self.Y_train = Y_train
-        self.Y_valid = Y_valid
-        self.Y_test = Y_test
+        self.x_train = x_train
+        self.x_valid = x_valid
+        self.x_test = x_test
+        self.y_train = y_train
+        self.y_valid = y_valid
+        self.y_test = y_test
+
+        return nb_classes
 
 
 class Model(object):
@@ -72,14 +75,14 @@ class Model(object):
     def build_model(self, dataset, nb_classes):
         self.model = Sequential()
 
-        self.model.add(Convolution2D(32, (3, 3), border_mode='same', input_shape=dataset.X_train.shape[1:]))
+        self.model.add(Convolution2D(32, (3, 3), padding='same', input_shape=dataset.x_train.shape[1:]))
         self.model.add(Activation('relu'))
         self.model.add(Convolution2D(32, (3, 3)))
         self.model.add(Activation('relu'))
         self.model.add(MaxPooling2D(pool_size=(2, 2)))
         self.model.add(Dropout(0.25))
 
-        self.model.add(Convolution2D(64, (3, 3), border_mode='same'))
+        self.model.add(Convolution2D(64, (3, 3), padding='same'))
         self.model.add(Activation('relu'))
         self.model.add(Convolution2D(64, (3, 3)))
         self.model.add(Activation('relu'))
@@ -95,21 +98,21 @@ class Model(object):
 
         self.model.summary()
 
-    def train(self, dataset, nb_epoch, batch_size=32, data_augmentation=True):
+    def train(self, dataset, nb_epoch, batch_size, data_augmentation):
         # sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
         self.model.compile(loss='categorical_crossentropy',
                            optimizer='SGD',
                            metrics=['accuracy'])
         if not data_augmentation:
             print('<--------------------Not using data augmentation-------------------->')
-            self.model.fit(dataset.X_train, dataset.Y_train,
+            self.model.fit(dataset.x_train, dataset.y_train,
                            batch_size=batch_size,
                            epochs=nb_epoch,
-                           validation_data=(dataset.X_valid, dataset.Y_valid),
+                           validation_data=(dataset.x_valid, dataset.y_valid),
                            shuffle=True)
         else:
             print('<--------------------Using real-time data augmentation-------------------->')
-            # this will do pre-processing and real-time data augmentation
+            # do pre-processing and real-time data augmentation
             datagen = ImageDataGenerator(
                 featurewise_center=False,             # set input mean to 0 over the dataset
                 samplewise_center=False,              # set each sample mean to 0
@@ -124,21 +127,20 @@ class Model(object):
 
             # compute quantities required for feature wise normalization
             # (std, mean, and principal components if ZCA whitening is applied)
-            datagen.fit(dataset.X_train)
+            datagen.fit(dataset.x_train)
 
             # fit the model on the batches generated by datagen.flow()
-            self.model.fit_generator(datagen.flow(dataset.X_train, dataset.Y_train,
-                                                  batch_size=batch_size),
-                                     samples_per_epoch=dataset.X_train.shape[0],
+            self.model.fit_generator(datagen.flow(dataset.x_train, dataset.y_train, batch_size=batch_size),
+                                     steps_per_epoch=dataset.x_train.shape[0],
                                      epochs=nb_epoch,
-                                     validation_data=(dataset.X_valid, dataset.Y_valid))
+                                     validation_data=(dataset.x_valid, dataset.y_valid))
 
     def save(self, file_path):
-        print('<--------------------Model Saved-------------------->')
+        print('<--------------------Model Saved at %s-------------------->' % file_path)
         self.model.save(file_path)
 
     def load(self, file_path):
-        print('<--------------------Model Loaded-------------------->')
+        print('<--------------------Model Loaded from %s-------------------->' % file_path)
         self.model = load_model(file_path)
 
     def predict(self, image):
@@ -148,36 +150,61 @@ class Model(object):
         image = image.astype('float32')
         image /= 255
         result = self.model.predict_proba(image)
-        print(result)
-
-        return result
+        return result[0]
 
     def evaluate(self, dataset):
-        score = self.model.evaluate(dataset.X_test, dataset.Y_test, verbose=0)
+        score = self.model.evaluate(dataset.x_test, dataset.y_test, verbose=0)
         print("%s: %.2f%%" % (self.model.metrics_names[1], score[1] * 100))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", type=str, help='path to read input')
-    parser.add_argument("--model_dir", type=str, help='path to save model')
+    parser.add_argument(
+        '--input_dir',
+        type=str,
+        help='path to read input'
+    )
+    parser.add_argument(
+        '--model_dir',
+        type=str,
+        help='path to save model'
+    )
+    parser.add_argument(
+        '--epoch',
+        type=int,
+        default=20,
+        help='choose number of epoch'
+    )
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=32,
+        help='choose batch size'
+    )
+    parser.add_argument(
+        '--data_augmentation',
+        type=bool,
+        default=True,
+        help='Use real time data augmentation'
+    )
     args = parser.parse_args()
-
     if args.input_dir:
         dataset = Dataset()
-        dataset.read(input_dir=args.input_dir, nb_classes=2)
+        nb_classes = dataset.read(input_dir=args.input_dir)
 
         model = Model()
-        model.build_model(dataset, nb_classes=2)
-        model.train(dataset, nb_epoch=10, batch_size=32, data_augmentation=True)
+        model.build_model(dataset, nb_classes=nb_classes)
+        model.train(
+            dataset,
+            nb_epoch=args.epoch,
+            batch_size=args.batch_size,
+            data_augmentation=args.data_augmentation
+        )
+        model.evaluate(dataset)
         if args.model_dir:
-            model.save(file_path=args.input_dir)
-
-            model = Model()
-            model.load(file_path=args.model_dir)
-            model.evaluate(dataset)
+            MODEL_DIR = args.model_dir
         else:
-            print("<--------------------Model no saved-------------------->")
-            pass
+            MODEL_DIR = args.input_dir
+        model.save(file_path=MODEL_DIR)
     else:
-        print("<--------------------Input no found-------------------->")
+        print('Input no found\nTry "python train.py -h" for more information')
         pass

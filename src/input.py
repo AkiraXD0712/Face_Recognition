@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
-
+from sklearn import preprocessing
 import numpy as np
 import cv2
 
 IMAGE_SIZE = 64
+CLASSES = None
 images = []
 labels = []
 
@@ -38,15 +39,18 @@ def resize_with_pad(image, height=IMAGE_SIZE, width=IMAGE_SIZE):
 def traverse_dir(path):
     for file_or_dir in os.listdir(path):
         abs_path = os.path.abspath(os.path.join(path, file_or_dir))
-        print(abs_path)
-        if os.path.isdir(abs_path):  # dir
+        # dir
+        if os.path.isdir(abs_path):
             traverse_dir(abs_path)
-        else:                        # file
-            if file_or_dir.endswith('.png'):
+        # file
+        else:
+            if file_or_dir.endswith('.jpg') or file_or_dir.endswith('.png'):
                 image = read_image(abs_path)
                 images.append(image)
-                labels.append(path)
 
+                dir_name, _ = os.path.split(abs_path)
+                label = os.path.basename(dir_name)
+                labels.append(label)
     return images, labels
 
 
@@ -58,8 +62,26 @@ def read_image(file_path):
 
 
 def extract_data(path):
+    global CLASSES
     images, labels = traverse_dir(path)
     images = np.array(images)
-    labels = np.array([0 if label.endswith('QR', 39, 41) else 1 for label in labels])
+    # change to ont-hot vector
+    one_hot = preprocessing.LabelBinarizer()
+    one_hot.fit(labels)
 
-    return images, labels
+    CLASSES = one_hot.classes_
+    nb_classes = len(CLASSES)
+
+    one_hots = list(one_hot.transform([i]) for i in labels)
+    one_hots = np.array(one_hots)
+    one_hots = np.reshape(one_hots, (images.shape[0], nb_classes))
+
+    return images, one_hots, nb_classes
+
+
+if __name__ == '__main__':
+    images, labels, nb_classes = extract_data('C:\\Users\Akira.DESKTOP-HM7OVCC\Desktop\photo')
+    print(images.shape, labels.shape)
+    print(labels)
+    print(CLASSES)
+
