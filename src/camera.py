@@ -1,64 +1,78 @@
-# detect face
-# Author: CHEN Lichong
-# Date: 05/04/2017
-
+# -*- coding: utf-8 -*-
 import cv2
+import argparse
+import time
+import numpy as np
+from train import Model
 
-face_cascade = cv2.CascadeClassifier("C:\\Users\Akira\Desktop\haarcascade_frontalface_default.xml")
-
-num = 0
-path = 'C:\\Users\Akira\Desktop\photo\\Chen Lichong'
-# position face detected
-position_x = 0
-position_y = 0
-width = 0
-high = 0
+classes = []
+FRAME_SIZE = 256
+font = cv2.FONT_HERSHEY_SIMPLEX
+switch = False
 
 
-def detect_face(img):
-    global position_x, position_y, width, high
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    face = face_cascade.detectMultiScale(
-        image=gray,
-        scaleFactor=1.2,
-        minNeighbors=2,
-        minSize=(30, 30),
-        flags=cv2.CASCADE_SCALE_IMAGE
+def detect(image):
+    crop_image = image[112:112 + FRAME_SIZE, 192:192 + FRAME_SIZE]
+    result = model.predict(crop_image)
+    index = np.argmax(result)
+    cv2.putText(image, classes[index], (192, 112), font, 1, (0, 255, 0), 2)
+
+
+def crop_save(image):
+    crop_image = image[112 + 2:112 + FRAME_SIZE - 2, 192 + 2:192 + FRAME_SIZE - 2]
+    timestamp = str(time.time())
+    cv2.imwrite(
+        'C:\\Users\Akira.DESKTOP-HM7OVCC\Desktop\database\\' + timestamp + '.png',
+        crop_image,
+        (cv2.IMWRITE_PNG_COMPRESSION, 0)
     )
-    for (x, y, w, h) in face:
-        cv2.rectangle(img, (position_x, position_y), (position_x + width, position_y + high), (0, 255, 0), 2)
-        position_x = x
-        position_y = y
-        width = w
-        high = h
 
 
-def crop_face(img):
-    global position_x, position_y, width, high
-    crop_img = cv2.resize(img[position_y-20:position_y + high+20, position_x:position_x + width], (400, 400))
-    return crop_img
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--predict_dir',
+        type=str,
+        help='folder contains model and labels'
+    )
+    args = parser.parse_args()
+
+    if args.predict_dir:
+        model = Model()
+        try:
+            model.load(file_path=args.predict_dir + '\model.h5')
+            with open(args.predict_dir + '\labels.txt', 'r') as f:
+                for line in f.readlines():
+                    classes.append(line.strip())
+        except OSError as e:
+            print("<--------------------Unable to open file-------------------->\n", e)
+        else:
+            cv2.namedWindow('Video')
+
+            # open le camera
+            capture = cv2.VideoCapture(0)
+
+            while capture.isOpened():
+
+                _, frame = capture.read()
+                cv2.rectangle(frame, (192, 112), (192 + FRAME_SIZE, 112 + FRAME_SIZE), (0, 255, 0), 2)
+                if switch:
+                    detect(frame)
+                cv2.imshow('Video', frame)
+                key = cv2.waitKey(10)
+                if key == ord('z'):
+                    switch = True
+                elif key == ord('d'):
+                    switch = False
+                elif key == ord('s'):
+                    crop_save(frame)
+                elif key == ord('q'):  # exit
+                    break
+
+            capture.release()
+            cv2.destroyWindow('Video')
+    else:
+        print('Input no found\nTry "python predict.py -h" for more information')
 
 
-cv2.namedWindow('Video')
 
-capture = cv2.VideoCapture(0)
-
-while capture.isOpened():
-
-    _, frame = capture.read()
-    frame_copy = frame.copy()
-    detect_face(frame_copy)
-
-    cv2.imshow('Video', frame_copy)
-
-    key = cv2.waitKey(20)
-    if key == ord('s'):     # capture
-        visage = crop_face(frame)
-        filename = path + str(num) + '.png'
-        cv2.imwrite(filename, visage, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-        num += 1
-    elif key == ord('q'): # exit
-        break
-
-capture.release()
-cv2.destroyWindow('Video')

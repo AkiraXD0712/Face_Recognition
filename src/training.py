@@ -8,9 +8,10 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import SGD
 from keras.models import load_model
-from QR_input import extract_data, resize_with_pad, IMAGE_SIZE
-
-MODEL_DIR = ''
+from hyperopt import Trials, STATUS_OK, tpe
+from hyperas import optim
+from hyperas.distributions import choice, uniform, conditional
+from input import extract_data, resize_with_pad, IMAGE_SIZE
 
 
 class Dataset(object):
@@ -164,11 +165,6 @@ if __name__ == '__main__':
         help='path to read input'
     )
     parser.add_argument(
-        '--model_dir',
-        type=str,
-        help='path to save model'
-    )
-    parser.add_argument(
         '--epoch',
         type=int,
         default=20,
@@ -200,11 +196,7 @@ if __name__ == '__main__':
             data_augmentation=args.data_augmentation
         )
         model.evaluate(dataset)
-        if args.model_dir:
-            MODEL_DIR = args.model_dir
-        else:
-            MODEL_DIR = args.input_dir
-        model.save(file_path=MODEL_DIR)
+        model.save(file_path=args.input_dir + '\model.h5')
     else:
         print('Input no found\nTry "python train.py -h" for more information')
         pass

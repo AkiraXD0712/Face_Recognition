@@ -5,7 +5,6 @@ import numpy as np
 import cv2
 
 IMAGE_SIZE = 64
-CLASSES = None
 images = []
 labels = []
 
@@ -68,9 +67,11 @@ def extract_data(path):
     # change to ont-hot vector
     one_hot = preprocessing.LabelBinarizer()
     one_hot.fit(labels)
+    nb_classes = len(one_hot.classes_)
 
-    CLASSES = one_hot.classes_
-    nb_classes = len(CLASSES)
+    with open(path+'\labels.txt', 'w') as f:
+        for label in one_hot.classes_:
+            f.write(label + '\n')
 
     one_hots = list(one_hot.transform([i]) for i in labels)
     one_hots = np.array(one_hots)
@@ -83,5 +84,4 @@ if __name__ == '__main__':
     images, labels, nb_classes = extract_data('C:\\Users\Akira.DESKTOP-HM7OVCC\Desktop\photo')
     print(images.shape, labels.shape)
     print(labels)
-    print(CLASSES)
 
