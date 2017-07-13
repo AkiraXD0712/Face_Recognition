@@ -3,7 +3,7 @@ import cv2
 import argparse
 import time
 import numpy as np
-from train import Model
+from training import Model
 
 classes = []
 FRAME_SIZE = 256
@@ -31,17 +31,17 @@ def crop_save(image):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--predict_dir',
+        '--model_dir',
         type=str,
         help='folder contains model and labels'
     )
     args = parser.parse_args()
 
-    if args.predict_dir:
+    if args.model_dir:
         model = Model()
         try:
-            model.load(file_path=args.predict_dir + '\model.h5')
-            with open(args.predict_dir + '\labels.txt', 'r') as f:
+            model.load(file_path=args.model_dir + '\model.h5')
+            with open(args.model_dir + '\labels.txt', 'r') as f:
                 for line in f.readlines():
                     classes.append(line.strip())
         except OSError as e:
